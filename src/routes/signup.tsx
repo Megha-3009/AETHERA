@@ -29,11 +29,13 @@ function SignupPage() {
     }
     setLoading(true);
     try {
-      await mockAuth.signup(name, email, password);
-      toast.success("Account created — verify your email");
-      navigate({ to: "/verify-email" });
-    } catch {
-      setError("Signup failed. Try again.");
+     await mockAuth.signup(name, email, password);
+
+    toast.success("Account created successfully!");
+    navigate({ to: "/app" }); // or "/onboarding" if you want onboarding first
+    } catch (err: any) {
+  console.error("Signup Error:", err);
+  setError(err.message || "Signup failed.");
     } finally {
       setLoading(false);
     }
