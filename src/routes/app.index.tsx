@@ -30,12 +30,20 @@ import {
   calculateProtein,
   calculateWater,
 } from "@/lib/fitness";
+import {
+  generateWorkout,
+  generateMeal,
+  generateReason,
+} from "@/lib/ai";
+import { getTodayRecommendation } from "@/services/recommendationService";
 export const Route = createFileRoute("/app/")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
   const [profile, setProfile] = useState<any>(null);
+
+  const [recommendation, setRecommendation] = useState<any>(null);
 
   const bmi =
   profile && profile.height && profile.weight
@@ -71,6 +79,10 @@ const water =
     ? calculateWater(profile.weight)
     : "0";
 
+const workout = profile ? generateWorkout(profile) : null;
+const meal = profile ? generateMeal(profile) : null;
+const reason = profile ? generateReason(profile) : "";
+
 useEffect(() => {
   loadProfile();
 }, []);
@@ -95,6 +107,8 @@ async function loadProfile() {
 
   setProfile(data);
   console.log("Profile:", data);
+  const rec = await getTodayRecommendation(data);
+setRecommendation(rec);
 }
   return (
     <div className="space-y-6">
@@ -177,8 +191,13 @@ async function loadProfile() {
               <Dumbbell className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-bold">{profile?.fitness_goal || "Today's Workout"}</h3>
-              <p className="text-sm text-muted-foreground">6 exercises · Intermediate</p>
+              <h3 className="text-lg font-bold">
+  {recommendation?.workout_title || workout?.title}
+</h3>
+
+<p className="text-sm text-muted-foreground">
+  {recommendation?.workout_description || workout?.description}
+</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <Badge variant="secondary">Chest</Badge>
                 <Badge variant="secondary">Shoulders</Badge>
@@ -191,15 +210,28 @@ async function loadProfile() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold">Today's meal</p>
-            <Badge variant="outline">{profile?.daily_calories || 2000} kcal</Badge>
+            <Badge variant="outline">
+  {calories} kcal
+</Badge>
           </div>
           <div className="flex items-start gap-4">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
               <UtensilsCrossed className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-bold">Paneer Bhurji Bowl</h3>
-              <p className="text-sm text-muted-foreground">High protein · Vegetarian · 30 min</p>
+              <h3 className="text-lg font-bold">
+  {recommendation?.meal_title || meal?.title}
+</h3>
+
+<div className="space-y-2">
+  <p className="text-sm text-muted-foreground whitespace-pre-line">
+    {recommendation?.meal_description || meal?.description}
+  </p>
+
+  <p className="text-xs text-primary italic">
+     {recommendation?.ai_reason || reason}
+  </p>
+</div>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <Badge variant="secondary">Protein 42g</Badge>
                 <Badge variant="secondary">Carbs 55g</Badge>
