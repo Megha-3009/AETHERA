@@ -7,7 +7,7 @@ import { AuthShell } from "@/components/layout/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/update-password")({
   component: UpdatePasswordPage,

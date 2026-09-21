@@ -32,7 +32,7 @@ function SignupPage() {
      await mockAuth.signup(name, email, password);
 
     toast.success("Account created successfully!");
-    navigate({ to: "/app" }); // or "/onboarding" if you want onboarding first
+    navigate({ to: "/onboarding" }); // or "/onboarding" if you want onboarding first
     } catch (err: any) {
   console.error("Signup Error:", err);
   setError(err.message || "Signup failed.");

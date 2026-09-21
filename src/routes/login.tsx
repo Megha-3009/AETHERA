@@ -30,9 +30,10 @@ function LoginPage() {
     try {
       await mockAuth.login(email, password);
       toast.success("Welcome back!");
-      navigate({ to: "/app" });
-    } catch {
-      setError("Something went wrong. Try again.");
+      navigate({ to: "/onboarding" });
+    } catch (err: any) {
+          console.error("Login Error:", err);
+         setError(err.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -43,7 +44,7 @@ function LoginPage() {
     try {
       await mockAuth.loginWithGoogle();
       toast.success("Signed in with Google");
-      navigate({ to: "/app" });
+      navigate({ to: "/onboarding" });
     } finally {
       setLoading(false);
     }

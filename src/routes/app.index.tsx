@@ -20,12 +20,82 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/dashboard/StatCard";
-
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+import {
+  calculateBMI,
+  bmiCategory,
+  calculateBMR,
+  calculateCalories,
+  calculateProtein,
+  calculateWater,
+} from "@/lib/fitness";
 export const Route = createFileRoute("/app/")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
+  const [profile, setProfile] = useState<any>(null);
+
+  const bmi =
+  profile && profile.height && profile.weight
+    ? calculateBMI(profile.height, profile.weight)
+    : 0;
+
+const bmr =
+  profile && profile.gender && profile.weight && profile.height && profile.age
+    ? calculateBMR(
+        profile.gender,
+        profile.weight,
+        profile.height,
+        profile.age
+      )
+    : 0;
+
+const calories =
+  profile && bmr
+    ? calculateCalories(
+        bmr,
+        profile.activity_level,
+        profile.fitness_goal
+      )
+    : 0;
+
+const protein =
+  profile && profile.weight
+    ? calculateProtein(profile.weight, profile.fitness_goal)
+    : 0;
+
+const water =
+  profile && profile.weight
+    ? calculateWater(profile.weight)
+    : "0";
+
+useEffect(() => {
+  loadProfile();
+}, []);
+
+async function loadProfile() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setProfile(data);
+  console.log("Profile:", data);
+}
   return (
     <div className="space-y-6">
       {/* Greeting */}
@@ -34,7 +104,11 @@ function DashboardPage() {
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Good morning</p>
             <h1 className="mt-1 truncate text-2xl font-black tracking-tight sm:text-3xl">
-              Ready to move, <span className="text-gradient-primary">Alex</span>?
+              Ready to move,
+<span className="text-gradient-primary">
+  {profile?.full_name || "User"}
+</span>
+?
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">Your body's telling us it's a strong day.</p>
           </div>
@@ -103,7 +177,7 @@ function DashboardPage() {
               <Dumbbell className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-lg font-bold">Upper Body · Push</h3>
+              <h3 className="text-lg font-bold">{profile?.fitness_goal || "Today's Workout"}</h3>
               <p className="text-sm text-muted-foreground">6 exercises · Intermediate</p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 <Badge variant="secondary">Chest</Badge>
@@ -117,7 +191,7 @@ function DashboardPage() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold">Today's meal</p>
-            <Badge variant="outline">1,820 kcal</Badge>
+            <Badge variant="outline">{profile?.daily_calories || 2000} kcal</Badge>
           </div>
           <div className="flex items-start gap-4">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
@@ -139,13 +213,39 @@ function DashboardPage() {
       <div>
         <p className="mb-3 text-sm font-semibold">Today's stats</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          <StatCard icon={Flame} label="Calories" value="1,420" hint="of 2,100 kcal" progress={68} tone="warning" />
-          <StatCard icon={Beef} label="Protein" value="86 g" hint="of 130 g" progress={66} tone="primary" />
-          <StatCard icon={GlassWater} label="Water" value="1.8 L" hint="of 3.0 L" progress={60} tone="accent" />
+          <StatCard
+  icon={Flame}
+  label="Calories"
+  value={`${calories}`}
+  hint="Daily Target"
+  tone="warning"
+/>
+
+<StatCard
+  icon={Beef}
+  label="Protein"
+  value={`${protein} g`}
+  hint="Daily Target"
+  tone="primary"
+/>
+
+<StatCard
+  icon={GlassWater}
+  label="Water"
+  value={`${water} L`}
+  hint="Daily Target"
+  tone="accent"
+/>
           <StatCard icon={Moon} label="Sleep" value="7h 24m" hint="Quality 82%" progress={82} tone="primary" />
           <StatCard icon={Footprints} label="Steps" value="6,240" hint="of 10,000" progress={62} tone="success" />
-          <StatCard icon={Weight} label="Weight" value="72.4 kg" hint="−0.3 kg week" tone="accent" />
-          <StatCard icon={Activity} label="Active min" value="42" hint="Zone 2 focus" progress={70} tone="success" />
+          <StatCard icon={Weight} label="Weight" value={`${profile?.weight || 0} kg`} hint="−0.3 kg week" tone="accent" />
+          <StatCard
+  icon={Activity}
+  label="BMI"
+  value={`${bmi}`}
+  hint={bmiCategory(bmi)}
+  tone="success"
+/>
           <StatCard icon={Trophy} label="Weekly challenge" value="4 / 6" hint="Push routine" progress={66} tone="warning" />
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
@@ -108,10 +109,65 @@ export function OnboardingPage() {
   function back() {
     if (step > 0) setStep(step - 1);
   }
-  function finish() {
-    toast.success("Your personalized plan is ready");
-    navigate({ to: "/app" });
+  async function finish() {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast.error("User not found");
+      return;
+    }
+
+    const { error } = await supabase
+  .from("profiles")
+  .update({
+    full_name: data.name,
+    age: Number(data.age),
+    gender: data.gender,
+
+    height: Number(data.height),
+    weight: Number(data.weight),
+
+    body_type: data.bodyType,
+
+    fitness_goal: data.goal,
+
+    activity_level: data.mode,
+
+    equipment: data.equipment,
+
+    experience: data.experience,
+
+    health_conditions: data.conditions,
+
+    disability: data.disabilities,
+
+    food_preference: data.foodPreference,
+
+    allergies: data.allergies,
+
+    budget: data.budget,
+
+    senior_mode: Number(data.age) >= 60,
+
+    onboarding_completed: true,
+  })
+  .eq("id", user.id);
+
+    if (error) throw error;
+
+    toast.success("Profile saved successfully!");
+
+    navigate({
+      to: "/app",
+    });
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to save profile");
   }
+}
 
   const canProceed = useMemo(() => {
     switch (step) {
@@ -477,17 +533,27 @@ function StepSummary({ data, isSenior }: { data: OnboardingData; isSenior: boole
   );
 }
 
-function Pill({ value, selected, onSelect }: { value: string; selected: boolean; onSelect: () => void }) {
+function Pill({
+  value,
+  selected,
+  onSelect,
+}: {
+  value: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <label
+    <button
+      type="button"
       onClick={onSelect}
       className={cn(
-        "flex cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition-all",
-        selected ? "border-primary bg-primary/5 text-primary" : "hover:bg-accent/5",
+        "flex w-full cursor-pointer items-center justify-center rounded-lg border px-3 py-2.5 text-sm font-medium transition-all",
+        selected
+          ? "border-primary bg-primary/5 text-primary"
+          : "hover:bg-accent/5"
       )}
     >
-      <RadioGroupItem value={value} className="sr-only" />
       {value}
-    </label>
+    </button>
   );
 }

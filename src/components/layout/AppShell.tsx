@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { APP_NAV } from "@/lib/nav";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 function isActive(pathname: string, to: string, exact?: boolean) {
   return exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -14,6 +16,27 @@ function isActive(pathname: string, to: string, exact?: boolean) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [profile, setProfile] = useState<any>(null);
+
+useEffect(() => {
+  loadProfile();
+}, []);
+
+async function loadProfile() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  setProfile(data);
+}
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -46,11 +69,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="border-t p-4">
           <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent/50 p-3">
             <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-gradient-primary text-white">AE</AvatarFallback>
+              <AvatarFallback className="bg-gradient-primary text-white">
+  {profile?.full_name
+    ?.split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase() || "U"}
+</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">Alex Explorer</p>
-              <p className="truncate text-xs text-muted-foreground">Level 7 · 1,240 XP</p>
+              <p className="truncate text-sm font-medium">
+  {profile?.full_name || "User"}
+</p>
+              <p className="truncate text-xs text-muted-foreground">
+  {profile?.fitness_goal || "Fitness Journey"}
+</p>
             </div>
           </div>
         </div>
@@ -68,7 +101,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
           <ThemeToggle />
           <Avatar className="ml-1 h-8 w-8 lg:hidden">
-            <AvatarFallback className="bg-gradient-primary text-white text-xs">AE</AvatarFallback>
+            <AvatarFallback className="bg-gradient-primary text-white text-xs">
+  {profile?.full_name
+    ?.split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase() || "U"}
+</AvatarFallback>
           </Avatar>
         </div>
       </header>
