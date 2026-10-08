@@ -30,6 +30,7 @@ import {
   calculateProtein,
   calculateWater,
 } from "@/lib/fitness";
+import { calculateReadiness } from "@/lib/readiness";
 import {
   generateWorkout,
   generateMeal,
@@ -44,6 +45,7 @@ function DashboardPage() {
   const [profile, setProfile] = useState<any>(null);
 
   const [recommendation, setRecommendation] = useState<any>(null);
+  const [readiness, setReadiness] = useState<any>(null);
 
   const bmi =
   profile && profile.height && profile.weight
@@ -107,8 +109,52 @@ async function loadProfile() {
 
   setProfile(data);
   console.log("Profile:", data);
-  const rec = await getTodayRecommendation(data);
-setRecommendation(rec);
+
+  // Calculate personalized nutrition values
+  const bmr = calculateBMR(
+    data.gender,
+    data.weight,
+    data.height,
+    data.age
+  );
+
+  const calories = calculateCalories(
+    bmr,
+    data.activity_level,
+    data.fitness_goal
+  );
+
+  const { data: checkin } = await supabase
+    .from("daily_checkins")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let readinessResult = null;
+
+  if (checkin) {
+    readinessResult = calculateReadiness({
+      sleep_hours: checkin.sleep_hours,
+      energy: checkin.energy,
+      mood: checkin.mood,
+      soreness: checkin.soreness,
+      stress: checkin.stress,
+      water: checkin.water,
+    });
+
+    setReadiness(readinessResult);
+  }
+
+  const rec = await getTodayRecommendation(
+    data,
+    readinessResult,
+    checkin,
+    calories
+  );
+
+  setRecommendation(rec);
 }
   return (
     <div className="space-y-6">
@@ -127,7 +173,7 @@ setRecommendation(rec);
             <p className="mt-1 text-sm text-muted-foreground">Your body's telling us it's a strong day.</p>
           </div>
           <Badge variant="secondary" className="hidden sm:inline-flex gap-1">
-            <Sparkles className="h-3 w-3" /> Readiness 82
+            <Sparkles className="h-3 w-3" /> Readiness {readiness?.score ?? "--"}
           </Badge>
         </div>
       </motion.div>
@@ -140,8 +186,10 @@ setRecommendation(rec);
             <div className="relative flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-white/70">AI Readiness Score</p>
-                <p className="mt-1 text-5xl font-black">82</p>
-                <p className="mt-1 text-sm text-white/80">Sleep +8 · Recovery +6 · Load −3</p>
+                <p className="mt-1 text-5xl font-black">{readiness?.score ?? "--"}</p>
+                <p className="mt-1 text-sm text-white/80"> {readiness
+    ? `${readiness.level} readiness · ${readiness.recommendation} workout recommended`
+    : "Complete your daily check-in"}</p>
               </div>
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/15 backdrop-blur">
                 <Zap className="h-7 w-7" />
@@ -184,7 +232,11 @@ setRecommendation(rec);
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-semibold">Today's workout</p>
-            <Badge variant="outline">45 min</Badge>
+            <Badge variant="outline">{readiness?.recommendation === "Recovery"
+  ? "20 min"
+  : readiness?.recommendation === "Light"
+    ? "30 min"
+    : "45 min"}</Badge>
           </div>
           <div className="flex items-start gap-4">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -192,17 +244,18 @@ setRecommendation(rec);
             </div>
             <div className="min-w-0">
               <h3 className="text-lg font-bold">
-  {recommendation?.workout_title || workout?.title}
+  {recommendation?.workout_title ?? "No workout available"}
 </h3>
 
 <p className="text-sm text-muted-foreground">
-  {recommendation?.workout_description || workout?.description}
+  {recommendation?.workout_description ?? ""}
 </p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                <Badge variant="secondary">Chest</Badge>
-                <Badge variant="secondary">Shoulders</Badge>
-                <Badge variant="secondary">Triceps</Badge>
-              </div>
+{recommendation?.ai_reason && (
+  <p className="mt-3 text-xs text-primary italic">
+    🤖 {recommendation.ai_reason}
+  </p>
+)}
+              
             </div>
           </div>
         </Card>
@@ -233,9 +286,14 @@ setRecommendation(rec);
   </p>
 </div>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                <Badge variant="secondary">Protein 42g</Badge>
-                <Badge variant="secondary">Carbs 55g</Badge>
-              </div>
+  <Badge variant="secondary">
+    Protein {protein}g
+  </Badge>
+
+  <Badge variant="secondary">
+    Water {water}L
+  </Badge>
+</div>
             </div>
           </div>
         </Card>

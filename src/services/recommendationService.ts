@@ -3,9 +3,15 @@ import {
   generateWorkout,
   generateMeal,
   generateReason,
+  generateReadinessReason,
 } from "@/lib/ai";
 
-export async function getTodayRecommendation(profile: any) {
+export async function getTodayRecommendation(
+  profile: any,
+  readiness?: any,
+  checkin?: any,
+  calories?: number
+) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -22,12 +28,13 @@ export async function getTodayRecommendation(profile: any) {
     .limit(1)
     .maybeSingle();
 
-  if (existing) return existing;
+  
 
-  const workout = generateWorkout(profile);
-  const meal = generateMeal(profile);
-  const reason = generateReason(profile);
-
+ const workout = generateWorkout(profile, readiness);
+ const meal = generateMeal(profile, readiness, calories);
+ const reason = readiness && checkin
+  ? generateReadinessReason(checkin, readiness)
+  : generateReason(profile);
   const recommendation = {
     user_id: user.id,
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "@tanstack/react-router";
+import { calculateReadiness } from "@/lib/readiness";
 
 export const Route = createFileRoute("/app/checkin")({
   component: CheckinPage,
@@ -27,21 +28,31 @@ function CheckinPage() {
 
   if (!user) return;
 
-  const { error } = await supabase.from("daily_checkins").insert({
-    user_id: user.id,
-    energy,
-    sleep_hours: sleep,
-    mood,
-    soreness,
-    stress,
-    water,
-  });
+  const readinessResult = calculateReadiness({
+  sleep_hours: sleep,
+  energy,
+  mood,
+  soreness,
+  stress,
+  water,
+});
 
-  if (error) {
-    console.error(error);
-    alert("Failed to save check-in.");
-    return;
-  }
+const { error } = await supabase.from("daily_checkins").insert({
+  user_id: user.id,
+  energy,
+  sleep_hours: sleep,
+  mood,
+  soreness,
+  stress,
+  water,
+  readiness_score: readinessResult.score,
+});
+
+if (error) {
+  console.error(error);
+  alert("Failed to save check-in.");
+  return;
+}
 
   alert("Check-in saved successfully!");
 
