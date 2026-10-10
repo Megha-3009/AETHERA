@@ -90,12 +90,13 @@ lastRepTimeRef.current = 0;
       setCameraActive(true);
       setLoading(false);
 
-      const ctx = canvas.getContext("2d");
+     const context = canvas.getContext("2d");
 
-      if (!ctx) {
-        throw new Error("Unable to create canvas drawing context.");
-      }
+if (!context) {
+  throw new Error("Unable to create canvas drawing context.");
+}
 
+const ctx: CanvasRenderingContext2D = context;
       let lastDetectionTime = -1;
 
       
