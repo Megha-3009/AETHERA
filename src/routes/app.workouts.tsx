@@ -136,6 +136,29 @@ function detectPose() {
     if (landmarks) {
       setDetected(true);
 
+
+const requiredLandmarks = [
+  landmarks[23], // Left hip
+  landmarks[24], // Right hip
+  landmarks[25], // Left knee
+  landmarks[26], // Right knee
+  landmarks[27], // Left ankle
+  landmarks[28], // Right ankle
+];
+
+const landmarksReliable = requiredLandmarks.every(
+  (point) => point && (point.visibility ?? 1) >= 0.6
+);
+
+
+
+if (!landmarksReliable) {
+  setExerciseFeedback(
+    "Move into full view so your hips, knees, and ankles are visible."
+  );
+} else {
+
+
       // Calculate knee angles.
       const leftKnee = calculateAngle(
         landmarks[23],
@@ -158,6 +181,15 @@ function detectPose() {
       
 const averageKneeAngle = (leftKnee + rightKnee) / 2;
 
+if (averageKneeAngle > 150) {
+  setFormFeedback("Standing position detected.");
+} else if (averageKneeAngle >= 115) {
+  setFormFeedback("Keep lowering into the squat.");
+} else if (averageKneeAngle >= 90) {
+  setFormFeedback("Good squat depth!");
+} else {
+  setFormFeedback("Deep squat detected. Maintain control.");
+}
 
 const leftHip = landmarks[23];
 const rightHip = landmarks[24];
@@ -166,21 +198,38 @@ const rightKneePoint = landmarks[26];
 const leftAnkle = landmarks[27];
 const rightAnkle = landmarks[28];
 
+
+// Check whether each knee moves inward relative to the hip-to-ankle line.
+const leftLegWidth = leftAnkle.x - leftHip.x;
+const rightLegWidth = rightAnkle.x - rightHip.x;
+
+const leftKneeOffset =
+  leftKneePoint.x -
+  (leftHip.x + leftAnkle.x) / 2;
+
+const rightKneeOffset =
+  rightKneePoint.x -
+  (rightHip.x + rightAnkle.x) / 2;
+
+// Normalize the offsets so the check is less sensitive
+// to differences in the apparent width of each leg.
 const leftKneeInward =
-  (leftKneePoint.x - leftHip.x) *
-  (leftAnkle.x - leftKneePoint.x) < 0;
+  Math.abs(leftLegWidth) > 0.02 &&
+  leftKneeOffset * leftLegWidth < -0.015;
 
 const rightKneeInward =
-  (rightKneePoint.x - rightHip.x) *
-  (rightAnkle.x - rightKneePoint.x) < 0;
+  Math.abs(rightLegWidth) > 0.02 &&
+  rightKneeOffset * rightLegWidth < -0.015;
 
 const kneeAlignmentWarning =
   leftKneeInward || rightKneeInward;
-  setAlignmentFeedback(
+
+setAlignmentFeedback(
   kneeAlignmentWarning
-    ? "Check your knee alignment."
-    : "No inward movement detected."
+    ? "Possible inward knee movement detected. Check your form."
+    : "No obvious inward knee movement detected."
 );
+
 
 
 if (averageKneeAngle > 150) {
@@ -193,20 +242,27 @@ if (averageKneeAngle > 150) {
 
 
 // Detect the downward movement.
+
+const now = Date.now();
+
+// Start a squat when the knees bend sufficiently.
 if (
-  averageKneeAngle < 115 &&
+  averageKneeAngle < 110 &&
   squatPhaseRef.current === "standing"
 ) {
   squatPhaseRef.current = "squatting";
   setExerciseFeedback("Squat detected — now stand up!");
 }
 
-// Count one rep when the user stands back up.
+// Count one rep when the user returns to standing.
 else if (
-  averageKneeAngle > 150 &&
-  squatPhaseRef.current === "squatting"
+  averageKneeAngle > 155 &&
+  squatPhaseRef.current === "squatting" &&
+  now - lastRepTimeRef.current >= REP_COOLDOWN_MS
 ) {
   squatPhaseRef.current = "standing";
+  lastRepTimeRef.current = now;
+
   setReps((prev) => prev + 1);
   setExerciseFeedback("Good rep! Ready for the next squat.");
 }
@@ -214,11 +270,13 @@ else if (
 else if (squatPhaseRef.current === "squatting") {
   setExerciseFeedback("Keep going — stand up to complete the rep.");
 }
+
 else {
   setExerciseFeedback("Bend your knees to begin the squat.");
 }
 
 
+}
 
       // Draw connections between body landmarks.
       ctx.lineWidth = Math.max(3, width / 250);
@@ -233,8 +291,8 @@ else {
         if (
           !a ||
           !b ||
-          (a.visibility ?? 1) < 0.5 ||
-          (b.visibility ?? 1) < 0.5
+          (a.visibility ?? 1) < 0.15 ||
+          (b.visibility ?? 1) < 0.15
         ) {
           continue;
         }
@@ -246,25 +304,48 @@ else {
       }
 
       // Draw visible body landmarks.
-      for (const point of landmarks) {
-        if ((point.visibility ?? 1) < 0.5) continue;
 
-        ctx.beginPath();
-        ctx.arc(
-          point.x * width,
-          point.y * height,
-          Math.max(3, width / 180),
-          0,
-          Math.PI * 2
-        );
+      
+// Temporary hand-tracking debug
+console.log("Left wrist:", landmarks[15]);
+console.log("Right wrist:", landmarks[16]);
+console.log("Left pinky:", landmarks[17]);
+console.log("Right pinky:", landmarks[18]);
+console.log("Left index:", landmarks[19]);
+console.log("Right index:", landmarks[20]);
 
-        ctx.fillStyle = "#00FF88";
-        ctx.fill();
+console.log("Left shoulder:", landmarks[11]);
+console.log("Left elbow:", landmarks[13]);
+console.log("Left wrist:", landmarks[15]);
 
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#062E20";
-        ctx.stroke();
-      }
+console.log("Right shoulder:", landmarks[12]);
+console.log("Right elbow:", landmarks[14]);
+console.log("Right wrist:", landmarks[16]);
+
+      
+// Draw visible pose landmarks.
+for (const point of landmarks) {
+  if (!point || (point.visibility ?? 1) < 0.5) {
+    continue;
+  }
+
+  ctx.beginPath();
+  ctx.arc(
+    point.x * width,
+    point.y * height,
+    4,
+    0,
+    2 * Math.PI
+  );
+
+  ctx.fillStyle = "#00ff88";
+  ctx.fill();
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#003322";
+  ctx.stroke();
+}
+
     } else {
       setDetected(false);
     }
