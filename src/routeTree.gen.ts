@@ -23,6 +23,7 @@ import { Route as AppWorkoutsRouteImport } from './routes/app.workouts'
 import { Route as AppProgressRouteImport } from './routes/app.progress'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppNutritionRouteImport } from './routes/app.nutrition'
+import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppCheckinRouteImport } from './routes/app.checkin'
 
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -95,6 +96,11 @@ const AppNutritionRoute = AppNutritionRouteImport.update({
   path: '/nutrition',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHistoryRoute = AppHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCheckinRoute = AppCheckinRouteImport.update({
   id: '/checkin',
   path: '/checkin',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/app/checkin': typeof AppCheckinRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/nutrition': typeof AppNutritionRoute
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/app/checkin': typeof AppCheckinRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/nutrition': typeof AppNutritionRoute
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/verify-email': typeof VerifyEmailRoute
   '/welcome': typeof WelcomeRoute
   '/app/checkin': typeof AppCheckinRoute
+  '/app/history': typeof AppHistoryRoute
   '/app/nutrition': typeof AppNutritionRoute
   '/app/profile': typeof AppProfileRoute
   '/app/progress': typeof AppProgressRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/welcome'
     | '/app/checkin'
+    | '/app/history'
     | '/app/nutrition'
     | '/app/profile'
     | '/app/progress'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/welcome'
     | '/app/checkin'
+    | '/app/history'
     | '/app/nutrition'
     | '/app/profile'
     | '/app/progress'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/welcome'
     | '/app/checkin'
+    | '/app/history'
     | '/app/nutrition'
     | '/app/profile'
     | '/app/progress'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNutritionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/history': {
+      id: '/app/history'
+      path: '/history'
+      fullPath: '/app/history'
+      preLoaderRoute: typeof AppHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/checkin': {
       id: '/app/checkin'
       path: '/checkin'
@@ -329,6 +348,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCheckinRoute: typeof AppCheckinRoute
+  AppHistoryRoute: typeof AppHistoryRoute
   AppNutritionRoute: typeof AppNutritionRoute
   AppProfileRoute: typeof AppProfileRoute
   AppProgressRoute: typeof AppProgressRoute
@@ -338,6 +358,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCheckinRoute: AppCheckinRoute,
+  AppHistoryRoute: AppHistoryRoute,
   AppNutritionRoute: AppNutritionRoute,
   AppProfileRoute: AppProfileRoute,
   AppProgressRoute: AppProgressRoute,

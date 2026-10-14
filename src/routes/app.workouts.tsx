@@ -12,6 +12,9 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+import { supabase } from "@/lib/supabase";
+
+
 export const Route = createFileRoute("/app/workouts")({
   component: WorkoutsPage,
 });
@@ -57,7 +60,64 @@ const [exerciseFeedback, setExerciseFeedback] = useState(
 
 const squatPhaseRef = useRef<"standing" | "squatting">("standing");
 const lastRepTimeRef = useRef(0);
+const workoutStartTimeRef = useRef<number | null>(null);
 const REP_COOLDOWN_MS = 1000;
+
+
+const [savingWorkout, setSavingWorkout] = useState(false);
+const [saveMessage, setSaveMessage] = useState("");
+
+const saveWorkoutSession = async () => {
+  if (savingWorkout) return;
+
+  const startedAt = workoutStartTimeRef.current;
+
+  if (startedAt === null) {
+    setSaveMessage("Please start a workout before saving.");
+    return;
+  }
+
+  const durationSeconds = Math.floor(
+    (Date.now() - startedAt) / 1000
+  );
+
+  setSavingWorkout(true);
+  setSaveMessage("");
+
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) throw userError;
+
+    if (!user) {
+      setSaveMessage("Please log in to save your workout.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("workout_sessions")
+      .insert({
+        user_id: user.id,
+        exercise_name: "Squats",
+        reps,
+        duration_seconds: durationSeconds,
+      });
+
+    if (error) throw error;
+
+    setSaveMessage("Squat session saved successfully!");
+    workoutStartTimeRef.current = null;
+  } catch (error) {
+    console.error("Failed to save workout:", error);
+    setSaveMessage("Could not save workout. Please try again.");
+  } finally {
+    setSavingWorkout(false);
+  }
+};
+
 
   async function startCamera() {
     try {
@@ -65,8 +125,9 @@ const REP_COOLDOWN_MS = 1000;
       setError("");
       setDetected(false);
       setReps(0);
-squatPhaseRef.current = "standing";
-lastRepTimeRef.current = 0;
+      squatPhaseRef.current = "standing";
+      lastRepTimeRef.current = 0;
+      workoutStartTimeRef.current = Date.now();
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
@@ -501,6 +562,7 @@ for (const point of landmarks) {
             </p>
           </div>
 
+          
           {!cameraActive ? (
             <Button onClick={startCamera} disabled={loading}>
               <Camera className="mr-2 h-4 w-4" />
@@ -513,7 +575,23 @@ for (const point of landmarks) {
             </Button>
           )}
         </div>
+
+        <div className="flex flex-col gap-2 px-5 pb-5">
+          <Button
+            onClick={saveWorkoutSession}
+            disabled={savingWorkout || reps === 0}
+          >
+            {savingWorkout ? "Saving..." : "Save Workout"}
+          </Button>
+
+          {saveMessage && (
+            <p role="status" className="text-sm text-muted-foreground">
+              {saveMessage}
+            </p>
+          )}
+        </div>
       </Card>
+
 
       {error && (
         <Card className="border-destructive p-5">
