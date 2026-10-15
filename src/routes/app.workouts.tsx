@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
-
+import FitnessAvatar3D from "@/components/fitness/FitnessAvatar3D";
 
 export const Route = createFileRoute("/app/workouts")({
   component: WorkoutsPage,
@@ -640,6 +640,8 @@ for (const point of landmarks) {
   Reset Repetitions
 </Button>
       </Card>
+       {/* Interactive 3D Fitness Avatar */}
+      <FitnessAvatar3D />
     </div>
   );
 }
