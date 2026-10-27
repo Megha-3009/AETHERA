@@ -1,7 +1,6 @@
 
-import { Suspense, useMemo, useState, useEffect, useRef } from "react";
-import { useLoader } from "@react-three/fiber";
-import { useFrame } from "@react-three/fiber";
+import { Suspense, useMemo, useState, useEffect } from "react";
+import { useLoader, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { Canvas } from "@react-three/fiber";
@@ -10,15 +9,13 @@ import {
   ContactShadows,
   Environment,
   OrbitControls,
-  useGLTF,
 } from "@react-three/drei";
 import { clone } from "three/addons/utils/SkeletonUtils.js";
 
-
 function RealisticFitnessModel({
-  isSquatting,
+  squatTrigger,
 }: {
-  isSquatting: boolean;
+  squatTrigger: number;
 }) {
   const character = useLoader(
     FBXLoader,
@@ -30,117 +27,63 @@ function RealisticFitnessModel({
     "/models/SquatAnimation.fbx"
   );
 
-  useEffect(() => {
-  console.log(
-  "CHARACTER BONES:",
-  model.children.map((child) => child.name)
-);
-
-console.log(
-  "ANIMATION TRACKS:",
-  animationFBX.animations[0]?.tracks
-    .slice(0, 20)
-    .map((track) => track.name)
-);
-}, [animationFBX]);
-
-  const model = useMemo(
-    () => clone(character),
-    [character]
-  );
+  const model = useMemo(() => clone(character), [character]);
 
   const mixer = useMemo(
     () => new THREE.AnimationMixer(model),
     [model]
   );
 
- 
-const action = useMemo(() => {
-  const sourceClip = animationFBX.animations.find(
-    (animation) => animation.duration > 0
-  );
+  const action = useMemo(() => {
+    const sourceClip = animationFBX.animations.find(
+      (animation) => animation.duration > 0
+    );
 
-  if (!sourceClip) {
-    console.error("No animation clip found in SquatAnimation.fbx");
-    return null;
-  }
+    if (!sourceClip) {
+      console.error("No animation clip found in SquatAnimation.fbx");
+      return null;
+    }
 
-  const clip = sourceClip.clone();
+    const clip = sourceClip.clone();
 
-  clip.tracks = clip.tracks
-    .map((track) => {
-      track = track.clone();
-
-      track.name = track.name.replace(
-        /^mixamorig(?=[A-Z])/,
-        "mixamorig2"
+    clip.tracks = clip.tracks
+      .map((sourceTrack) => {
+        const track = sourceTrack.clone();
+        track.name = track.name.replace(
+          /^mixamorig(?=[A-Z])/,
+          "mixamorig2"
+        );
+        return track;
+      })
+      .filter((track) =>
+        model.getObjectByName(track.name.split(".")[0])
       );
 
-      return track;
-    })
-    .filter((track) => model.getObjectByName(
-      track.name.split(".")[0]
-    ));
+    console.log(
+      "Retargeted animation tracks:",
+      clip.tracks.length,
+      "of",
+      sourceClip.tracks.length
+    );
 
-  console.log(
-    "Retargeted animation tracks:",
-    clip.tracks.length,
-    "of",
-    sourceClip.tracks.length
-  );
+    return mixer.clipAction(clip);
+  }, [animationFBX, mixer, model]);
 
-  return mixer.clipAction(clip);
-}, [animationFBX, mixer, model]);
+  useEffect(() => {
+    if (!action || squatTrigger === 0) return;
 
-
-  
-useEffect(() => {
-  if (!action) return;
-
-  action.stop();
-  action.reset();
-  action.enabled = true;
-  action.paused = false;
-  action.clampWhenFinished = true;
-  action.setLoop(THREE.LoopOnce, 1);
-
-  if (isSquatting) {
+    action.stop();
+    action.reset();
+    action.enabled = true;
+    action.paused = false;
+    action.clampWhenFinished = true;
+    action.setLoop(THREE.LoopOnce, 1);
     action.timeScale = 1;
     action.time = 0;
     action.play();
-  } else {
-    action.timeScale = -1;
-    action.time = action.getClip().duration;
-    action.play();
-  }
-}, [isSquatting, action]);
 
-
- 
-useEffect(() => {
-  if (!action) return;
-
-  action.stop();
-  action.reset();
-  action.enabled = true;
-  action.paused = false;
-  action.setLoop(THREE.LoopOnce, 1);
-  action.clampWhenFinished = true;
-
-  const duration = action.getClip().duration;
-
-  if (isSquatting) {
-    action.timeScale = 1;
-    action.time = 0;
-  } else {
-    action.timeScale = -1;
-    action.time = duration;
-  }
-
-  action.play();
-  mixer.update(0);
-}, [isSquatting, action, mixer]);
-
+    mixer.update(0);
+  }, [squatTrigger, action, mixer]);
 
   useFrame((_, delta) => {
     mixer.update(delta);
@@ -149,9 +92,8 @@ useEffect(() => {
   return <primitive object={model} />;
 }
 
-
 export function FitnessAvatar3D() {
-  const [isSquatting, setIsSquatting] = useState(false);
+  const [squatTrigger, setSquatTrigger] = useState(0);
 
   return (
     <div className="w-full overflow-hidden rounded-2xl border border-border bg-card">
@@ -176,7 +118,7 @@ export function FitnessAvatar3D() {
 
           <Suspense fallback={null}>
             <Bounds fit clip observe margin={1.3}>
-              <RealisticFitnessModel isSquatting={isSquatting} />
+              <RealisticFitnessModel squatTrigger={squatTrigger} />
             </Bounds>
             <ContactShadows
               position={[0, -1.5, 0]}
@@ -198,13 +140,7 @@ export function FitnessAvatar3D() {
 
       <div className="flex justify-center gap-3 px-4 py-3">
         <button
-          onClick={() => setIsSquatting(false)}
-          className="rounded-lg border border-border px-4 py-2 text-sm"
-        >
-          Stand
-        </button>
-        <button
-          onClick={() => setIsSquatting(true)}
+          onClick={() => setSquatTrigger((n) => n + 1)}
           className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground"
         >
           Squat
